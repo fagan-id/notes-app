@@ -1,13 +1,41 @@
 <!doctype html>
-<html lang="en">
+<html lang="id">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>notes-app</title>
+    <meta name="description" content="Catatan cepat di HP yang tetap bisa dipakai saat offline." />
+    <meta name="theme-color" content="#1d4ed8" />
+    <title>Catatan</title>
   </head>
   <body>
-    <div id="app"></div>
+    <main>
+      <h1>Catatan</h1>
+
+      <label for="search-input">Cari</label>
+      <input id="search-input" type="search" autocomplete="off" />
+
+      <button type="button" id="add-button">Tambah catatan</button>
+
+      <form id="editor" hidden novalidate>
+        <label for="title-input">Judul</label>
+        <input id="title-input" type="text" autocomplete="off" aria-describedby="title-error" />
+        <p id="title-error" class="error"></p>
+
+        <label for="body-input">Isi</label>
+        <textarea id="body-input" rows="6"></textarea>
+
+        <p id="save-error" class="error" role="alert"></p>
+        <div class="actions">
+          <button type="submit">Simpan</button>
+          <button type="button" id="delete-button" class="danger" hidden>Hapus</button>
+        </div>
+      </form>
+
+      <p id="status" class="visually-hidden" aria-live="polite"></p>
+      <ul id="note-list"></ul>
+      <p id="empty-message" hidden>Belum ada catatan</p>
+    </main>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
