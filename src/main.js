@@ -12,6 +12,7 @@ const bodyInput = document.querySelector("#body-input");
 const titleError = document.querySelector("#title-error");
 const saveError = document.querySelector("#save-error");
 const deleteButton = document.querySelector("#delete-button");
+const cancelButton = document.querySelector("#cancel-button");
 const noteList = document.querySelector("#note-list");
 const emptyMessage = document.querySelector("#empty-message");
 
@@ -45,7 +46,17 @@ function renderItem(note) {
 function render() {
   const query = searchInput.value.trim();
   const notes = store.search(query);
-  noteList.replaceChildren(...notes.map(renderItem));
+  // While the form is open, other actions are disabled so typed text cannot be replaced.
+  const formOpen = !form.hidden;
+  noteList.replaceChildren(
+    ...notes.map((note) => {
+      const item = renderItem(note);
+      item.hidden = note.id === editingId;
+      item.firstChild.disabled = formOpen;
+      return item;
+    }),
+  );
+  addButton.disabled = formOpen;
   emptyMessage.textContent = query ? "Tidak ada catatan yang cocok" : "Belum ada catatan";
   emptyMessage.hidden = notes.length > 0;
   status.textContent = query ? `${notes.length} catatan ditemukan` : "";
@@ -64,6 +75,7 @@ function openEditor(note = null) {
   deleteButton.hidden = note === null;
   clearErrors();
   form.hidden = false;
+  render();
   titleInput.focus();
 }
 
@@ -72,10 +84,15 @@ function closeEditor() {
   form.reset();
   editingId = null;
   clearErrors();
+  render();
   addButton.focus();
 }
 
 addButton.addEventListener("click", () => openEditor());
+cancelButton.addEventListener("click", closeEditor);
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !form.hidden) closeEditor();
+});
 searchInput.addEventListener("input", render);
 
 form.addEventListener("submit", (event) => {
