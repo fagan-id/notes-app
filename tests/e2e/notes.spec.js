@@ -265,3 +265,88 @@ test.describe("WO-4", () => {
     expect(canary).toBe("offline");
   });
 });
+
+test.describe("WO-5", () => {
+  const editor = (page) => page.getByLabel("Judul");
+  const item = (page, title) => noteList(page).getByRole("button", { name: title });
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/");
+  });
+
+  test("cancel discards edits", async ({ page }) => {
+    await addNote(page, "Belanja", "beras");
+
+    await item(page, /Belanja/).click();
+    await editor(page).fill("Diubah");
+    await page.getByRole("button", { name: "Batal" }).click();
+
+    await expect(editor(page)).toBeHidden();
+    await expect(item(page, /Belanja/)).toBeVisible();
+    await expect(noteList(page)).not.toContainText("Diubah");
+    await page.reload();
+    await expect(item(page, /Belanja/)).toBeVisible();
+    await expect(noteList(page)).not.toContainText("Diubah");
+  });
+
+  test("cancel on a new note saves nothing", async ({ page }) => {
+    await page.getByRole("button", { name: "Tambah catatan" }).click();
+    await editor(page).fill("Draf");
+    await page.getByRole("button", { name: "Batal" }).click();
+
+    await expect(editor(page)).toBeHidden();
+    await expect(page.getByText("Belum ada catatan")).toBeVisible();
+    await page.reload();
+    await expect(page.getByText("Belum ada catatan")).toBeVisible();
+  });
+
+  test("escape closes the form and returns focus", async ({ page }) => {
+    await page.getByRole("button", { name: "Tambah catatan" }).click();
+    await editor(page).fill("Draf");
+
+    await page.keyboard.press("Escape");
+
+    await expect(editor(page)).toBeHidden();
+    await expect(page.getByRole("button", { name: "Tambah catatan" })).toBeFocused();
+    await expect(page.getByText("Belum ada catatan")).toBeVisible();
+  });
+
+  test("hides the note being edited until the form closes", async ({ page }) => {
+    await addNote(page, "Belanja", "beras");
+    await addNote(page, "Tugas", "laporan");
+
+    await item(page, /Belanja/).click();
+
+    await expect(item(page, /Belanja/)).toBeHidden();
+    await expect(item(page, /Tugas/)).toBeVisible();
+
+    await page.getByRole("button", { name: "Batal" }).click();
+
+    await expect(item(page, /Belanja/)).toBeVisible();
+  });
+
+  test("editing the only note does not show the empty message", async ({ page }) => {
+    await addNote(page, "Belanja", "beras");
+
+    await item(page, /Belanja/).click();
+
+    await expect(item(page, /Belanja/)).toBeHidden();
+    await expect(page.getByText("Belum ada catatan")).toBeHidden();
+  });
+
+  test("other actions are disabled while the form is open", async ({ page }) => {
+    await addNote(page, "Belanja", "beras");
+    await addNote(page, "Tugas", "laporan");
+
+    await item(page, /Belanja/).click();
+
+    await expect(page.getByRole("button", { name: "Tambah catatan" })).toBeDisabled();
+    await expect(item(page, /Tugas/)).toBeDisabled();
+    await expect(editor(page)).toHaveValue("Belanja");
+
+    await page.getByRole("button", { name: "Simpan" }).click();
+
+    await expect(page.getByRole("button", { name: "Tambah catatan" })).toBeEnabled();
+    await expect(item(page, /Tugas/)).toBeEnabled();
+  });
+});
