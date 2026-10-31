@@ -118,3 +118,7 @@ deleteButton.addEventListener("click", () => {
 });
 
 render();
+
+if ("serviceWorker" in navigator && import.meta.env.PROD) {
+  navigator.serviceWorker.register("./sw.js");
+}
