@@ -3,6 +3,8 @@ import { createStore } from "./storage.js";
 
 const store = createStore();
 
+const searchInput = document.querySelector("#search-input");
+const status = document.querySelector("#status");
 const addButton = document.querySelector("#add-button");
 const form = document.querySelector("#editor");
 const titleInput = document.querySelector("#title-input");
@@ -41,9 +43,12 @@ function renderItem(note) {
 }
 
 function render() {
-  const notes = store.list();
+  const query = searchInput.value.trim();
+  const notes = store.search(query);
   noteList.replaceChildren(...notes.map(renderItem));
+  emptyMessage.textContent = query ? "Tidak ada catatan yang cocok" : "Belum ada catatan";
   emptyMessage.hidden = notes.length > 0;
+  status.textContent = query ? `${notes.length} catatan ditemukan` : "";
 }
 
 function clearErrors() {
@@ -71,6 +76,7 @@ function closeEditor() {
 }
 
 addButton.addEventListener("click", () => openEditor());
+searchInput.addEventListener("input", render);
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();

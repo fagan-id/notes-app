@@ -149,3 +149,63 @@ test.describe("WO-2", () => {
     });
   });
 });
+
+test.describe("WO-3", () => {
+  const status = (page) => page.locator('[aria-live="polite"]');
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/");
+    await addNote(page, "Belanja", "beras");
+    await addNote(page, "Tugas", "laporan");
+  });
+
+  test("filters while typing", async ({ page }) => {
+    await page.getByLabel("Cari").fill("bel");
+
+    await expect(noteList(page).getByText("Belanja")).toBeVisible();
+    await expect(noteList(page).getByText("Tugas")).toBeHidden();
+  });
+
+  test("matches body text", async ({ page }) => {
+    await page.getByLabel("Cari").fill("LAPORAN");
+
+    await expect(noteList(page).getByText("Tugas")).toBeVisible();
+    await expect(noteList(page).getByText("Belanja")).toBeHidden();
+  });
+
+  test("shows no-match message", async ({ page }) => {
+    await page.getByLabel("Cari").fill("zzz");
+
+    await expect(page.getByText("Tidak ada catatan yang cocok")).toBeVisible();
+    await expect(page.getByText("Belum ada catatan")).toBeHidden();
+    await expect(noteList(page).getByRole("button")).toHaveCount(0);
+  });
+
+  test("clearing search shows all", async ({ page }) => {
+    await page.getByLabel("Cari").fill("bel");
+    await expect(noteList(page).getByText("Tugas")).toBeHidden();
+
+    await page.getByLabel("Cari").fill("");
+
+    await expect(noteList(page).getByText("Belanja")).toBeVisible();
+    await expect(noteList(page).getByText("Tugas")).toBeVisible();
+    await expect(page.getByText("Tidak ada catatan yang cocok")).toBeHidden();
+  });
+
+  test("announces result count", async ({ page }) => {
+    await page.getByLabel("Cari").fill("bel");
+
+    await expect(status(page)).toContainText("1 catatan ditemukan");
+  });
+
+  test("keeps the active search after saving", async ({ page }) => {
+    await page.getByLabel("Cari").fill("bel");
+
+    await addNote(page, "Beli sabun", "");
+
+    await expect(noteList(page).getByText("Beli sabun")).toBeVisible();
+    await expect(noteList(page).getByText("Belanja")).toBeVisible();
+    await expect(noteList(page).getByText("Tugas")).toBeHidden();
+    await expect(status(page)).toContainText("2 catatan ditemukan");
+  });
+});
