@@ -2,7 +2,7 @@ import js from "@eslint/js";
 import globals from "globals";
 
 export default [
-  { ignores: ["dist/", "playwright-report/", "test-results/", ".lighthouseci/"] },
+  { ignores: ["dist/", "playwright-report/", "test-results/", ".lighthouseci/", "dev-dist/"] },
   js.configs.recommended,
   {
     languageOptions: {

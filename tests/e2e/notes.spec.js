@@ -209,3 +209,59 @@ test.describe("WO-3", () => {
     await expect(status(page)).toContainText("2 catatan ditemukan");
   });
 });
+
+test.describe("WO-4", () => {
+  test("serves a valid manifest", async ({ page, request }) => {
+    await page.goto("/");
+
+    const link = page.locator('link[rel="manifest"]');
+    await expect(link).toHaveCount(1);
+    // GitHub Pages serves the app under /notes-app/, so a root path would 404 there.
+    expect(await link.getAttribute("href")).not.toMatch(/^\//);
+
+    const manifestUrl = await link.evaluate((el) => el.href);
+    const response = await request.get(manifestUrl);
+    expect(response.status()).toBe(200);
+    const manifest = await response.json();
+
+    expect(manifest.name).toBe("Catatan");
+    expect(manifest.display).toBe("standalone");
+    const sizes = manifest.icons.map((icon) => icon.sizes);
+    expect(sizes).toContain("192x192");
+    expect(sizes).toContain("512x512");
+
+    for (const icon of manifest.icons) {
+      const iconResponse = await request.get(new URL(icon.src, manifestUrl).href);
+      expect(iconResponse.status(), icon.src).toBe(200);
+      expect(iconResponse.headers()["content-type"], icon.src).toContain("image/png");
+    }
+  });
+
+  test("works offline after first visit", async ({ page, context }) => {
+    await page.goto("/");
+    await addNote(page, "Catatan offline", "tetap ada");
+
+    await page.evaluate(() => navigator.serviceWorker.ready);
+    // The first visit is not controlled until the worker claims it or the page reloads.
+    if (!(await page.evaluate(() => navigator.serviceWorker.controller))) {
+      await page.reload();
+    }
+    expect(await page.evaluate(() => navigator.serviceWorker.controller !== null)).toBe(true);
+
+    await context.setOffline(true);
+    await page.reload();
+
+    await expect(page.getByRole("heading", { name: "Catatan" })).toBeVisible();
+    await expect(noteList(page)).toContainText("Catatan offline");
+
+    // Canary: an uncached URL must fail, otherwise the network is still reachable
+    // and this test proves nothing.
+    const canary = await page.evaluate(() =>
+      fetch("./missing-" + Date.now()).then(
+        () => "online",
+        () => "offline",
+      ),
+    );
+    expect(canary).toBe("offline");
+  });
+});
