@@ -1,60 +1,114 @@
-import './style.css'
-import heroImg from './assets/hero.png'
-import javascriptLogo from './assets/javascript.svg'
-import viteLogo from './assets/vite.svg'
-import { setupCounter } from './counter.js'
+import "./style.css";
+import { createStore } from "./storage.js";
 
-document.querySelector('#app').innerHTML = `
-<section id="center">
-  <div class="hero">
-    <img src="${heroImg}" class="base" width="170" height="179">
-    <img src="${javascriptLogo}" class="framework" alt="JavaScript logo"/>
-    <img src="${viteLogo}" class="vite" alt="Vite logo" />
-  </div>
-  <div>
-    <h1>Get started</h1>
-    <p>Edit <code>src/main.js</code> and save to test <code>HMR</code></p>
-  </div>
-  <button id="counter" type="button" class="counter"></button>
-</section>
+const store = createStore();
 
-<div class="ticks"></div>
+const addButton = document.querySelector("#add-button");
+const form = document.querySelector("#editor");
+const titleInput = document.querySelector("#title-input");
+const bodyInput = document.querySelector("#body-input");
+const titleError = document.querySelector("#title-error");
+const saveError = document.querySelector("#save-error");
+const deleteButton = document.querySelector("#delete-button");
+const noteList = document.querySelector("#note-list");
+const emptyMessage = document.querySelector("#empty-message");
 
-<section id="next-steps">
-  <div id="docs">
-    <svg class="icon" role="presentation" aria-hidden="true"><use href="/icons.svg#documentation-icon"></use></svg>
-    <h2>Documentation</h2>
-    <p>Your questions, answered</p>
-    <ul>
-      <li>
-        <a href="https://vite.dev/" target="_blank">
-          <img class="logo" src="${viteLogo}" alt="" />
-          Explore Vite
-        </a>
-      </li>
-      <li>
-        <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript" target="_blank">
-          <img class="button-icon" src="${javascriptLogo}" alt="">
-          Learn more
-        </a>
-      </li>
-    </ul>
-  </div>
-  <div id="social">
-    <svg class="icon" role="presentation" aria-hidden="true"><use href="/icons.svg#social-icon"></use></svg>
-    <h2>Connect with us</h2>
-    <p>Join the Vite community</p>
-    <ul>
-      <li><a href="https://github.com/vitejs/vite" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#github-icon"></use></svg>GitHub</a></li>
-      <li><a href="https://chat.vite.dev/" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#discord-icon"></use></svg>Discord</a></li>
-      <li><a href="https://x.com/vite_js" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#x-icon"></use></svg>X.com</a></li>
-      <li><a href="https://bsky.app/profile/vite.dev" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#bluesky-icon"></use></svg>Bluesky</a></li>
-    </ul>
-  </div>
-</section>
+let editingId = null;
 
-<div class="ticks"></div>
-<section id="spacer"></section>
-`
+function renderItem(note) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "note";
 
-setupCounter(document.querySelector('#counter'))
+  // Note text always goes through textContent, never innerHTML.
+  const title = document.createElement("span");
+  title.className = "note-title";
+  title.textContent = note.title;
+  button.append(title);
+
+  if (note.body) {
+    const body = document.createElement("span");
+    body.className = "note-body";
+    body.textContent = note.body;
+    button.append(body);
+  }
+
+  button.addEventListener("click", () => openEditor(note));
+
+  const item = document.createElement("li");
+  item.append(button);
+  return item;
+}
+
+function render() {
+  const notes = store.list();
+  noteList.replaceChildren(...notes.map(renderItem));
+  emptyMessage.hidden = notes.length > 0;
+}
+
+function clearErrors() {
+  titleError.textContent = "";
+  titleInput.removeAttribute("aria-invalid");
+  saveError.textContent = "";
+}
+
+function openEditor(note = null) {
+  editingId = note?.id ?? null;
+  titleInput.value = note?.title ?? "";
+  bodyInput.value = note?.body ?? "";
+  deleteButton.hidden = note === null;
+  clearErrors();
+  form.hidden = false;
+  titleInput.focus();
+}
+
+function closeEditor() {
+  form.hidden = true;
+  form.reset();
+  editingId = null;
+  clearErrors();
+  addButton.focus();
+}
+
+addButton.addEventListener("click", () => openEditor());
+
+form.addEventListener("submit", (event) => {
+  event.preventDefault();
+  clearErrors();
+
+  if (titleInput.value.trim() === "") {
+    titleError.textContent = "Judul wajib diisi";
+    titleInput.setAttribute("aria-invalid", "true");
+    titleInput.focus();
+    return;
+  }
+
+  try {
+    store.save({ id: editingId ?? undefined, title: titleInput.value, body: bodyInput.value });
+  } catch (error) {
+    // Keep the form open with the typed text so nothing is lost.
+    console.error(error);
+    saveError.textContent = "Gagal menyimpan. Penyimpanan perangkat mungkin penuh.";
+    return;
+  }
+
+  closeEditor();
+  render();
+});
+
+deleteButton.addEventListener("click", () => {
+  if (!confirm("Hapus catatan ini?")) return;
+
+  try {
+    store.remove(editingId);
+  } catch (error) {
+    console.error(error);
+    saveError.textContent = "Gagal menghapus. Coba lagi.";
+    return;
+  }
+
+  closeEditor();
+  render();
+});
+
+render();
